@@ -48,12 +48,18 @@ export async function mealRoutes(app: FastifyInstance) {
     if (is_diet_meal === undefined) {
       return res.status(400).send({ message: "Is diet meal is required!" });
     }
+    const mealTime = new Date(meal_time);
+
+    if (mealTime.getDate === undefined) {
+      return res.status(400).send({ message: "Invalid date!" });
+    }
+
     const { id: user_id } = req.user;
     await knex("meals").insert({
       user_id,
       name,
       description,
-      meal_time,
+      meal_time: mealTime.toISOString(),
       is_diet_meal,
     });
     res.status(201).send({ message: "Meal created!" });
@@ -97,9 +103,19 @@ export async function mealRoutes(app: FastifyInstance) {
       return res.status(400).send({ message: "At least one field is required to update!" });
     }
 
+    let mealTime = {} as Date;
+
+    if (updateBody.meal_time) {
+      mealTime = new Date(updateBody.meal_time);
+
+      if (mealTime.getDate === undefined) {
+        return res.status(400).send({ message: "Invalid date!" });
+      }
+    }
+
     await knex("meals")
       .where({ id, user_id })
-      .update({ ...meal, ...updateBody });
+      .update({ ...meal, ...updateBody, meal_time: !!mealTime.getDate ? mealTime.toISOString() : meal.meal_time });
 
     res.status(200).send({ message: "Meal updated!" });
   });
