@@ -7,7 +7,6 @@ export async function up(knex: Knex): Promise<void> {
     table.text("email").notNullable().unique();
     table.text("password_hash").notNullable();
     table.timestamp("created_at").defaultTo(knex.fn.now());
-    table.timestamp("updated_at");
   });
 }
 

@@ -47,8 +47,7 @@ export async function usersRoutes(app: FastifyInstance) {
       name,
       email,
       password_hash,
-      created_at: new Date(),
-      updated_at: null,
+      created_at: new Date().toISOString(),
     });
 
     res.status(201).send({ message: "Usuário criado com sucesso." });
@@ -74,27 +73,25 @@ export async function usersRoutes(app: FastifyInstance) {
     }
 
     const user = await knex("users").where("email", email).first();
-    if (user) {
-      try {
-        if (await argon.verify(user.password_hash, password)) {
-          let { session } = req.cookies;
+    if (user && (await argon.verify(user.password_hash, password))) {
+      const payload = {
+        id: user.id,
+      };
+      const token = app.jwt.sign(payload, {
+        expiresIn: 1000 * 60 * 60 * 24 * 3, // 3 days
+      });
 
-          if (!session) {
-            session = randomUUID();
-            res.setCookie("session", session, {
-              path: "/",
-              maxAge: 60 * 60 * 24 * 3, // 3 days
-            });
-          }
-          return res.status(200).send({ message: "Usuário logado com sucesso." });
-        } else {
-          return res.status(401).send({ message: "Senha inválida." });
-        }
-      } catch (error) {
-        console.error(error);
-      }
+      res.setCookie("token", token, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 3, // 3 days
+        secure: true,
+        httpOnly: true,
+        sameSite: 'strict',
+      });
+
+      return res.status(200).send({ message: "Usuário logado com sucesso." });
     }
 
-    res.status(404).send({ message: "Usuário não encontrado." });
+    res.status(401).send({ message: "Email ou senha inválidos." });
   });
 }
